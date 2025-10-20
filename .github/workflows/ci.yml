@@ -1,0 +1,37 @@
+name: build-and-push
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # GHCR 푸시에 필요
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        run: echo "${{ github.token }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build & Push images (backend + frontend)
+        run: |
+          # 리포 경로를 전부 소문자로 (Docker 레지스트리 규칙)
+          REPO_LC="${GITHUB_REPOSITORY,,}"
+
+          # ---- Backend (NestJS) ----
+          IMG_API_LATEST="ghcr.io/${REPO_LC}-api:latest"
+          IMG_API_SHA="ghcr.io/${REPO_LC}-api:${GITHUB_SHA}"
+          docker build -t "$IMG_API_LATEST" -t "$IMG_API_SHA" ./backend
+          docker push "$IMG_API_LATEST"
+          docker push "$IMG_API_SHA"
+
+          # ---- Frontend (React + Nginx) ----
+          IMG_WEB_LATEST="ghcr.io/${REPO_LC}-web:latest"
+          IMG_WEB_SHA="ghcr.io/${REPO_LC}-web:${GITHUB_SHA}"
+          docker build -t "$IMG_WEB_LATEST" -t "$IMG_WEB_SHA" ./frontend
+          docker push "$IMG_WEB_LATEST"
+          docker push "$IMG_WEB_SHA"
