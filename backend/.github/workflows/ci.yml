@@ -1,0 +1,28 @@
+name: build-and-push
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        run: echo "${{ github.token }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build & Push image
+        run: |
+          REPO_LC="${GITHUB_REPOSITORY,,}"             # owner/repo → 모두 소문자
+          IMAGE_LATEST="ghcr.io/${REPO_LC}:latest"
+          IMAGE_SHA="ghcr.io/${REPO_LC}:${GITHUB_SHA}"
+
+          # Dockerfile 위치가 루트가 아니면 ./backend 로 바꾸세요
+          docker build -t "$IMAGE_LATEST" -t "$IMAGE_SHA" .
+
+          docker push "$IMAGE_LATEST"
+          docker push "$IMAGE_SHA"
